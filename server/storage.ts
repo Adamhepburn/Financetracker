@@ -1,4 +1,4 @@
-import { users, type User, type InsertUser, type PlaidAccount, type Account, type Transaction, type InsertPlaidAccount } from "@shared/schema";
+import { users, type User, type InsertUser, type PlaidAccount, type Account, type Transaction, type InsertPlaidAccount, type InsertAccount, type InsertTransaction } from "@shared/schema";
 import session from "express-session";
 import createMemoryStore from "memorystore";
 
@@ -11,6 +11,9 @@ export interface IStorage {
   createPlaidAccount(account: InsertPlaidAccount): Promise<PlaidAccount>;
   getAccountsByUserId(userId: number): Promise<Account[]>;
   getTransactionsByUserId(userId: number): Promise<Transaction[]>;
+  createAccount(account: InsertAccount): Promise<Account>;
+  createTransaction(transaction: InsertTransaction): Promise<Transaction>;
+  getAccountByPlaidId(plaidAccountId: string): Promise<Account | undefined>;
   sessionStore: session.Store;
 }
 
@@ -55,6 +58,26 @@ export class MemStorage implements IStorage {
     const plaidAccount: PlaidAccount = { ...account, id };
     this.plaidAccounts.set(id, plaidAccount);
     return plaidAccount;
+  }
+
+  async createAccount(account: InsertAccount): Promise<Account> {
+    const id = this.currentId++;
+    const newAccount: Account = { ...account, id };
+    this.accounts.set(id, newAccount);
+    return newAccount;
+  }
+
+  async createTransaction(transaction: InsertTransaction): Promise<Transaction> {
+    const id = this.currentId++;
+    const newTransaction: Transaction = { ...transaction, id };
+    this.transactions.set(id, newTransaction);
+    return newTransaction;
+  }
+
+  async getAccountByPlaidId(plaidAccountId: string): Promise<Account | undefined> {
+    return Array.from(this.accounts.values()).find(
+      account => account.plaidAccountId === plaidAccountId
+    );
   }
 
   async getAccountsByUserId(userId: number): Promise<Account[]> {

@@ -17,6 +17,57 @@ const plaidClient = new PlaidApi(
   })
 );
 
+async function syncPlaidData(plaidAccountId: number, accessToken: string) {
+  try {
+    // Get accounts
+    const accountsResponse = await plaidClient.accountsGet({ access_token: accessToken });
+    const accounts = accountsResponse.data.accounts;
+
+    // Store accounts
+    for (const account of accounts) {
+      await storage.createAccount({
+        plaidAccountId,
+        plaidAccountId2: account.account_id,
+        name: account.name,
+        type: account.type,
+        subtype: account.subtype || null,
+        balance: account.balances.current || 0,
+        isoCurrencyCode: account.balances.iso_currency_code || 'USD',
+      });
+    }
+
+    // Get transactions from the last 30 days
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 30);
+    const endDate = new Date();
+
+    const transactionsResponse = await plaidClient.transactionsGet({
+      access_token: accessToken,
+      start_date: startDate.toISOString().split('T')[0],
+      end_date: endDate.toISOString().split('T')[0],
+    });
+
+    // Store transactions
+    for (const transaction of transactionsResponse.data.transactions) {
+      const account = await storage.getAccountByPlaidId(transaction.account_id);
+      if (account) {
+        await storage.createTransaction({
+          accountId: account.id,
+          plaidTransactionId: transaction.transaction_id,
+          date: new Date(transaction.date),
+          name: transaction.name,
+          amount: transaction.amount,
+          category: transaction.category ? transaction.category[0] : null,
+          pending: transaction.pending,
+        });
+      }
+    }
+  } catch (error) {
+    console.error('Error syncing Plaid data:', error);
+    throw error;
+  }
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
 
@@ -60,6 +111,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         institutionName: institution.data.institution.name,
         lastSync: new Date(),
       });
+
+      // Sync account and transaction data
+      await syncPlaidData(plaidAccount.id, exchange.data.access_token);
 
       res.json(plaidAccount);
     } catch (error) {
