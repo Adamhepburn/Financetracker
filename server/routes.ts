@@ -66,6 +66,9 @@ async function syncPlaidData(plaidAccountId: number, accessToken: string) {
         });
       }
     }
+
+    // Log the sync results
+    console.log(`Synced ${accounts.length} accounts and ${transactionsResponse.data.transactions.length} transactions`);
   } catch (error) {
     console.error('Error syncing Plaid data:', error);
     throw error;
