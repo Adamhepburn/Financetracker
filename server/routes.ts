@@ -22,6 +22,7 @@ async function syncPlaidData(plaidAccountId: number, accessToken: string) {
     // Get accounts
     const accountsResponse = await plaidClient.accountsGet({ access_token: accessToken });
     const accounts = accountsResponse.data.accounts;
+    console.log('Fetched accounts from Plaid:', accounts.length);
 
     // Store accounts
     for (const account of accounts) {
@@ -47,7 +48,10 @@ async function syncPlaidData(plaidAccountId: number, accessToken: string) {
       end_date: endDate.toISOString().split('T')[0],
     });
 
+    console.log('Fetched transactions from Plaid:', transactionsResponse.data.transactions.length);
+
     // Store transactions
+    let storedTransactions = 0;
     for (const transaction of transactionsResponse.data.transactions) {
       const account = await storage.getAccountByPlaidId(transaction.account_id);
       if (account) {
@@ -64,11 +68,14 @@ async function syncPlaidData(plaidAccountId: number, accessToken: string) {
           category: transaction.category ? transaction.category[0] : null,
           pending: transaction.pending,
         });
+        storedTransactions++;
+      } else {
+        console.log('Could not find account for transaction:', transaction.account_id);
       }
     }
 
     // Log the sync results
-    console.log(`Synced ${accounts.length} accounts and ${transactionsResponse.data.transactions.length} transactions`);
+    console.log(`Synced ${accounts.length} accounts and ${storedTransactions} transactions`);
   } catch (error) {
     console.error('Error syncing Plaid data:', error);
     throw error;
