@@ -1,4 +1,4 @@
-import { users, type User, type InsertUser, type PlaidAccount, type Account, type Transaction, type InsertPlaidAccount, type InsertAccount, type InsertTransaction } from "@shared/schema";
+import { users, type User, type InsertUser, type PlaidAccount, type Account, type Transaction, type InsertPlaidAccount, type InsertAccount, type InsertTransaction, type InvestmentHolding, type Security, type InsertHolding, type InsertSecurity } from "@shared/schema";
 import session from "express-session";
 import createMemoryStore from "memorystore";
 
@@ -14,6 +14,12 @@ export interface IStorage {
   createAccount(account: InsertAccount): Promise<Account>;
   createTransaction(transaction: InsertTransaction): Promise<Transaction>;
   getAccountByPlaidId(plaidAccountId2: string): Promise<Account | undefined>;
+  // New methods for investment data
+  createHolding(holding: InsertHolding): Promise<InvestmentHolding>;
+  createSecurity(security: InsertSecurity): Promise<Security>;
+  getHoldingsByAccountId(accountId: number): Promise<InvestmentHolding[]>;
+  getSecurityById(securityId: string): Promise<Security | undefined>;
+  getHoldingsByUserId(userId: number): Promise<InvestmentHolding[]>;
   sessionStore: session.Store;
 }
 
@@ -22,6 +28,8 @@ export class MemStorage implements IStorage {
   private plaidAccounts: Map<number, PlaidAccount>;
   private accounts: Map<number, Account>;
   private transactions: Map<number, Transaction>;
+  private holdings: Map<number, InvestmentHolding>;
+  private securities: Map<string, Security>;
   currentId: number;
   sessionStore: session.Store;
 
@@ -30,6 +38,8 @@ export class MemStorage implements IStorage {
     this.plaidAccounts = new Map();
     this.accounts = new Map();
     this.transactions = new Map();
+    this.holdings = new Map();
+    this.securities = new Map();
     this.currentId = 1;
     this.sessionStore = new MemoryStore({
       checkPeriod: 86400000, // prune expired entries every 24h
@@ -105,6 +115,46 @@ export class MemStorage implements IStorage {
     const userAccounts = await this.getAccountsByUserId(userId);
     return Array.from(this.transactions.values()).filter(
       transaction => userAccounts.some(account => account.id === transaction.accountId)
+    );
+  }
+
+  async createHolding(holding: InsertHolding): Promise<InvestmentHolding> {
+    const id = this.currentId++;
+    const newHolding: InvestmentHolding = { 
+      ...holding, 
+      id,
+      costBasis: holding.costBasis || null 
+    };
+    this.holdings.set(id, newHolding);
+    return newHolding;
+  }
+
+  async createSecurity(security: InsertSecurity): Promise<Security> {
+    const newSecurity: Security = { 
+      ...security,
+      id: this.currentId++,
+      closePrice: security.closePrice || null,
+      updateDate: security.updateDate || null,
+      tickerSymbol: security.tickerSymbol || null
+    };
+    this.securities.set(security.securityId, newSecurity);
+    return newSecurity;
+  }
+
+  async getHoldingsByAccountId(accountId: number): Promise<InvestmentHolding[]> {
+    return Array.from(this.holdings.values()).filter(
+      holding => holding.accountId === accountId
+    );
+  }
+
+  async getSecurityById(securityId: string): Promise<Security | undefined> {
+    return this.securities.get(securityId);
+  }
+
+  async getHoldingsByUserId(userId: number): Promise<InvestmentHolding[]> {
+    const userAccounts = await this.getAccountsByUserId(userId);
+    return Array.from(this.holdings.values()).filter(
+      holding => userAccounts.some(account => account.id === holding.accountId)
     );
   }
 }

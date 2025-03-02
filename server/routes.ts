@@ -37,6 +37,42 @@ async function syncPlaidData(plaidAccountId: number, accessToken: string) {
       });
     }
 
+    // Sync investment holdings if available
+    try {
+      const holdingsResponse = await plaidClient.investmentsHoldingsGet({ access_token: accessToken });
+      console.log('Fetched investment holdings from Plaid:', holdingsResponse.data.holdings.length);
+
+      // Store securities
+      for (const security of holdingsResponse.data.securities) {
+        await storage.createSecurity({
+          securityId: security.security_id,
+          name: security.name,
+          tickerSymbol: security.ticker_symbol || null,
+          type: security.type,
+          closePrice: security.close_price?.toString(),
+          updateDate: new Date(security.update_datetime || Date.now()),
+        });
+      }
+
+      // Store holdings
+      for (const holding of holdingsResponse.data.holdings) {
+        const account = await storage.getAccountByPlaidId(holding.account_id);
+        if (account) {
+          await storage.createHolding({
+            accountId: account.id,
+            securityId: holding.security_id,
+            quantity: holding.quantity.toString(),
+            costBasis: holding.cost_basis?.toString() || null,
+            value: holding.institution_value.toString(),
+            lastPrice: holding.institution_price.toString(),
+            priceAsOf: new Date(holding.institution_price_as_of),
+          });
+        }
+      }
+    } catch (error) {
+      console.log('No investment data available or error fetching:', error);
+    }
+
     // Get transactions from the last 30 days
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - 30);
@@ -92,7 +128,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const request = {
         user: { client_user_id: req.user.id.toString() },
         client_name: "Finance Dashboard",
-        products: ["transactions"] as Products[],
+        products: ["transactions", "investments"] as Products[],
         country_codes: ["US"] as CountryCode[],
         language: "en",
       };
@@ -148,6 +184,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     const transactions = await storage.getTransactionsByUserId(req.user.id);
     res.json(transactions);
+  });
+
+  app.get("/api/investments/holdings", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    const holdings = await storage.getHoldingsByUserId(req.user.id);
+    res.json(holdings);
   });
 
   const httpServer = createServer(app);

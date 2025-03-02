@@ -39,6 +39,30 @@ export const transactions = pgTable("transactions", {
   pending: boolean("pending").notNull(),
 });
 
+// New schema for investment holdings
+export const investmentHoldings = pgTable("investment_holdings", {
+  id: serial("id").primaryKey(),
+  accountId: integer("account_id").notNull(),
+  securityId: text("security_id").notNull(),
+  quantity: numeric("quantity").notNull(),
+  costBasis: numeric("cost_basis"),
+  value: numeric("value").notNull(),
+  lastPrice: numeric("last_price").notNull(),
+  priceAsOf: timestamp("price_as_of").notNull(),
+});
+
+// New schema for securities
+export const securities = pgTable("securities", {
+  id: serial("id").primaryKey(),
+  securityId: text("security_id").notNull().unique(),
+  name: text("name").notNull(),
+  tickerSymbol: text("ticker_symbol"),
+  type: text("type").notNull(),
+  closePrice: numeric("close_price"),
+  updateDate: timestamp("update_date"),
+});
+
+// Export schemas and types
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -47,13 +71,19 @@ export const insertUserSchema = createInsertSchema(users).pick({
 export const insertPlaidAccountSchema = createInsertSchema(plaidAccounts);
 export const insertAccountSchema = createInsertSchema(accounts);
 export const insertTransactionSchema = createInsertSchema(transactions);
+export const insertHoldingSchema = createInsertSchema(investmentHoldings);
+export const insertSecuritySchema = createInsertSchema(securities);
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type InsertPlaidAccount = z.infer<typeof insertPlaidAccountSchema>;
 export type InsertAccount = z.infer<typeof insertAccountSchema>;
 export type InsertTransaction = z.infer<typeof insertTransactionSchema>;
+export type InsertHolding = z.infer<typeof insertHoldingSchema>;
+export type InsertSecurity = z.infer<typeof insertSecuritySchema>;
 
 export type User = typeof users.$inferSelect;
 export type PlaidAccount = typeof plaidAccounts.$inferSelect;
 export type Account = typeof accounts.$inferSelect;
 export type Transaction = typeof transactions.$inferSelect;
+export type InvestmentHolding = typeof investmentHoldings.$inferSelect;
+export type Security = typeof securities.$inferSelect;

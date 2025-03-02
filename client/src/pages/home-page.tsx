@@ -1,6 +1,7 @@
 import { AccountsOverview } from "@/components/dashboard/accounts-overview";
 import { RecentTransactions } from "@/components/dashboard/recent-transactions";
 import { ExpenseChart } from "@/components/dashboard/expense-chart";
+import { InvestmentPortfolio } from "@/components/dashboard/investment-portfolio";
 import { PlaidLinkButton } from "@/components/plaid/link-button";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -39,6 +40,9 @@ export default function HomePage() {
           <AccountsOverview />
           <ExpenseChart />
           <RecentTransactions />
+          <div className="md:col-span-2 lg:col-span-3">
+            <InvestmentPortfolio />
+          </div>
         </div>
       </main>
     </div>
