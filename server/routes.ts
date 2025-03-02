@@ -189,8 +189,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/investments/holdings", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
 
-    const holdings = await storage.getHoldingsByUserId(req.user.id);
-    res.json(holdings);
+    try {
+      const holdings = await storage.getHoldingsByUserId(req.user.id);
+      // Enrich holdings with security names
+      const enrichedHoldings = await Promise.all(holdings.map(async (holding) => {
+        const security = await storage.getSecurityById(holding.securityId);
+        return {
+          ...holding,
+          securityName: security?.name || 'Unknown Security',
+          tickerSymbol: security?.tickerSymbol,
+          securityType: security?.type
+        };
+      }));
+
+      console.log('Fetched enriched holdings:', enrichedHoldings.length);
+      res.json(enrichedHoldings);
+    } catch (error) {
+      console.error('Error fetching holdings:', error);
+      res.status(500).json({ error: "Failed to fetch holdings" });
+    }
   });
 
   const httpServer = createServer(app);

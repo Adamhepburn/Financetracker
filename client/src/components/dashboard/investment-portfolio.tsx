@@ -6,8 +6,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8"];
 
+interface EnrichedHolding extends InvestmentHolding {
+  securityName: string;
+  tickerSymbol?: string | null;
+  securityType?: string;
+}
+
 export function InvestmentPortfolio() {
-  const { data: holdings, isLoading } = useQuery<InvestmentHolding[]>({
+  const { data: holdings, isLoading } = useQuery<EnrichedHolding[]>({
     queryKey: ["/api/investments/holdings"],
   });
 
@@ -25,11 +31,11 @@ export function InvestmentPortfolio() {
   }
 
   const portfolioValue = holdings?.reduce((sum, holding) => sum + Number(holding.value), 0) || 0;
-  
+
   const holdingsByValue = holdings?.reduce((acc, holding) => {
-    const securityName = holding.securityId; // We'll update this with actual security names later
+    const displayName = holding.tickerSymbol || holding.securityName;
     const value = Number(holding.value);
-    acc[securityName] = (acc[securityName] || 0) + value;
+    acc[displayName] = (acc[displayName] || 0) + value;
     return acc;
   }, {} as Record<string, number>);
 
