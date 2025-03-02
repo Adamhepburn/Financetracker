@@ -41,34 +41,50 @@ async function syncPlaidData(plaidAccountId: number, accessToken: string) {
     try {
       const holdingsResponse = await plaidClient.investmentsHoldingsGet({ access_token: accessToken });
       console.log('Fetched investment holdings from Plaid:', holdingsResponse.data.holdings.length);
+      console.log('Fetched securities from Plaid:', holdingsResponse.data.securities.length);
 
       // Store securities
       for (const security of holdingsResponse.data.securities) {
-        await storage.createSecurity({
-          securityId: security.security_id,
-          name: security.name,
-          tickerSymbol: security.ticker_symbol || null,
-          type: security.type,
-          closePrice: security.close_price?.toString(),
-          updateDate: new Date(security.update_datetime || Date.now()),
-        });
+        try {
+          const storedSecurity = await storage.createSecurity({
+            securityId: security.security_id,
+            name: security.name,
+            tickerSymbol: security.ticker_symbol || null,
+            type: security.type,
+            closePrice: security.close_price?.toString() || null,
+            updateDate: security.update_datetime ? new Date(security.update_datetime) : new Date(),
+          });
+          console.log('Stored security:', storedSecurity.name);
+        } catch (error) {
+          console.error('Error storing security:', error);
+        }
       }
 
       // Store holdings
+      let storedHoldingsCount = 0;
       for (const holding of holdingsResponse.data.holdings) {
         const account = await storage.getAccountByPlaidId(holding.account_id);
         if (account) {
-          await storage.createHolding({
-            accountId: account.id,
-            securityId: holding.security_id,
-            quantity: holding.quantity.toString(),
-            costBasis: holding.cost_basis?.toString() || null,
-            value: holding.institution_value.toString(),
-            lastPrice: holding.institution_price.toString(),
-            priceAsOf: new Date(holding.institution_price_as_of),
-          });
+          try {
+            await storage.createHolding({
+              accountId: account.id,
+              securityId: holding.security_id,
+              quantity: holding.quantity.toString(),
+              costBasis: holding.cost_basis?.toString() || null,
+              value: holding.institution_value.toString(),
+              lastPrice: holding.institution_price.toString(),
+              priceAsOf: new Date(holding.institution_price_as_of),
+            });
+            storedHoldingsCount++;
+          } catch (error) {
+            console.error('Error storing holding:', error);
+          }
+        } else {
+          console.log('Could not find account for holding:', holding.account_id);
         }
       }
+      console.log('Successfully stored holdings:', storedHoldingsCount);
+
     } catch (error) {
       console.log('No investment data available or error fetching:', error);
     }
@@ -111,7 +127,7 @@ async function syncPlaidData(plaidAccountId: number, accessToken: string) {
     }
 
     // Log the sync results
-    console.log(`Synced ${accounts.length} accounts and ${storedTransactions} transactions`);
+    console.log(`Synced ${accounts.length} accounts, ${storedTransactions} transactions`);
   } catch (error) {
     console.error('Error syncing Plaid data:', error);
     throw error;
@@ -191,9 +207,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     try {
       const holdings = await storage.getHoldingsByUserId(req.user.id);
+      console.log('Raw holdings found:', holdings.length);
+
       // Enrich holdings with security names
       const enrichedHoldings = await Promise.all(holdings.map(async (holding) => {
         const security = await storage.getSecurityById(holding.securityId);
+        console.log('Found security for holding:', security?.name || 'Not found', 'ID:', holding.securityId);
         return {
           ...holding,
           securityName: security?.name || 'Unknown Security',
