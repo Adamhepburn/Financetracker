@@ -31,7 +31,7 @@ async function syncPlaidData(plaidAccountId: number, accessToken: string) {
         name: account.name,
         type: account.type,
         subtype: account.subtype || null,
-        balance: account.balances.current || 0,
+        balance: account.balances.current?.toString() || "0",
         isoCurrencyCode: account.balances.iso_currency_code || 'USD',
       });
     }
@@ -51,12 +51,16 @@ async function syncPlaidData(plaidAccountId: number, accessToken: string) {
     for (const transaction of transactionsResponse.data.transactions) {
       const account = await storage.getAccountByPlaidId(transaction.account_id);
       if (account) {
+        // Convert amount to negative for expenses (default Plaid behavior)
+        // Plaid returns positive amounts for withdrawals/expenses
+        const amount = (-transaction.amount).toString();
+
         await storage.createTransaction({
           accountId: account.id,
           plaidTransactionId: transaction.transaction_id,
           date: new Date(transaction.date),
           name: transaction.name,
-          amount: transaction.amount,
+          amount: amount,
           category: transaction.category ? transaction.category[0] : null,
           pending: transaction.pending,
         });
