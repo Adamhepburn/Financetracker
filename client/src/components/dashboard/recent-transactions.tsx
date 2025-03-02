@@ -44,7 +44,7 @@ export function RecentTransactions() {
                   {format(new Date(transaction.date), "MMM d, yyyy")}
                 </p>
               </div>
-              <p className={`font-medium ${Number(transaction.amount) < 0 ? "text-red-500" : "text-green-500"}`}>
+              <p className={`font-medium ${Number(transaction.amount) > 0 ? "text-green-500" : "text-red-500"}`}>
                 ${Math.abs(Number(transaction.amount)).toFixed(2)}
               </p>
             </div>

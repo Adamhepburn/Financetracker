@@ -13,7 +13,7 @@ export interface IStorage {
   getTransactionsByUserId(userId: number): Promise<Transaction[]>;
   createAccount(account: InsertAccount): Promise<Account>;
   createTransaction(transaction: InsertTransaction): Promise<Transaction>;
-  getAccountByPlaidId(plaidAccountId: string): Promise<Account | undefined>;
+  getAccountByPlaidId(plaidAccountId2: string): Promise<Account | undefined>;
   sessionStore: session.Store;
 }
 
@@ -55,28 +55,40 @@ export class MemStorage implements IStorage {
 
   async createPlaidAccount(account: InsertPlaidAccount): Promise<PlaidAccount> {
     const id = this.currentId++;
-    const plaidAccount: PlaidAccount = { ...account, id };
+    const plaidAccount: PlaidAccount = { 
+      ...account, 
+      id,
+      lastSync: account.lastSync || null 
+    };
     this.plaidAccounts.set(id, plaidAccount);
     return plaidAccount;
   }
 
   async createAccount(account: InsertAccount): Promise<Account> {
     const id = this.currentId++;
-    const newAccount: Account = { ...account, id };
+    const newAccount: Account = { 
+      ...account, 
+      id,
+      subtype: account.subtype || null 
+    };
     this.accounts.set(id, newAccount);
     return newAccount;
   }
 
   async createTransaction(transaction: InsertTransaction): Promise<Transaction> {
     const id = this.currentId++;
-    const newTransaction: Transaction = { ...transaction, id };
+    const newTransaction: Transaction = { 
+      ...transaction, 
+      id,
+      category: transaction.category || null 
+    };
     this.transactions.set(id, newTransaction);
     return newTransaction;
   }
 
-  async getAccountByPlaidId(plaidAccountId: string): Promise<Account | undefined> {
+  async getAccountByPlaidId(plaidAccountId2: string): Promise<Account | undefined> {
     return Array.from(this.accounts.values()).find(
-      account => account.plaidAccountId === plaidAccountId
+      account => account.plaidAccountId2 === plaidAccountId2
     );
   }
 

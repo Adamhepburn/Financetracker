@@ -28,14 +28,28 @@ export function ExpenseChart() {
     ?.filter((t) => Number(t.amount) < 0)
     .reduce((acc, transaction) => {
       const category = transaction.category || "Other";
-      acc[category] = (acc[category] || 0) + Math.abs(Number(transaction.amount));
+      const amount = Math.abs(Number(transaction.amount));
+      acc[category] = (acc[category] || 0) + amount;
       return acc;
     }, {} as Record<string, number>);
 
   const chartData = Object.entries(expensesByCategory || {}).map(([name, value]) => ({
     name,
-    value,
+    value: Number(value.toFixed(2)),
   }));
+
+  if (chartData.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Expenses by Category</CardTitle>
+        </CardHeader>
+        <CardContent className="h-[300px] flex items-center justify-center">
+          <p className="text-muted-foreground">No expense data available</p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>
