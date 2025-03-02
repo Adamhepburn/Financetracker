@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { usePlaidLink } from "react-plaid-link";
 import { Button } from "@/components/ui/button";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Plus, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -58,24 +58,39 @@ export function PlaidLinkButton() {
     },
   });
 
-  const { open, ready } = usePlaidLink({
-    token,
-    onSuccess: (public_token, metadata) => {
+  const onSuccess = useCallback(
+    (public_token: string, metadata: any) => {
       exchangeToken.mutate({
         public_token,
         institution_id: metadata.institution?.institution_id ?? "",
       });
     },
-  });
+    [exchangeToken]
+  );
+
+  const config = {
+    token,
+    onSuccess,
+  };
+
+  const { open, ready } = usePlaidLink(config);
+
+  useEffect(() => {
+    if (token && ready) {
+      open();
+    }
+  }, [token, ready, open]);
 
   const handleClick = () => {
     linkTokenMutation.mutate();
   };
 
+  const isDisabled = !ready && !token && (linkTokenMutation.isPending || exchangeToken.isPending);
+
   return (
     <Button
       onClick={handleClick}
-      disabled={!ready || linkTokenMutation.isPending || exchangeToken.isPending}
+      disabled={isDisabled}
     >
       {(linkTokenMutation.isPending || exchangeToken.isPending) ? (
         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
