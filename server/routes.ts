@@ -25,8 +25,9 @@ async function syncPlaidData(plaidAccountId: number, accessToken: string) {
     console.log('Fetched accounts from Plaid:', accounts.length);
 
     // Store accounts
+    const storedAccounts = [];
     for (const account of accounts) {
-      await storage.createAccount({
+      const storedAccount = await storage.createAccount({
         plaidAccountId,
         plaidAccountId2: account.account_id,
         name: account.name,
@@ -34,6 +35,12 @@ async function syncPlaidData(plaidAccountId: number, accessToken: string) {
         subtype: account.subtype || null,
         balance: account.balances.current?.toString() || "0",
         isoCurrencyCode: account.balances.iso_currency_code || 'USD',
+      });
+      storedAccounts.push(storedAccount);
+      console.log('Stored account:', {
+        id: storedAccount.id,
+        name: storedAccount.name,
+        plaidId: storedAccount.plaidAccountId2
       });
     }
 
@@ -66,7 +73,7 @@ async function syncPlaidData(plaidAccountId: number, accessToken: string) {
         const account = await storage.getAccountByPlaidId(holding.account_id);
         if (account) {
           try {
-            await storage.createHolding({
+            const storedHolding = await storage.createHolding({
               accountId: account.id,
               securityId: holding.security_id,
               quantity: holding.quantity.toString(),
@@ -74,6 +81,12 @@ async function syncPlaidData(plaidAccountId: number, accessToken: string) {
               value: holding.institution_value.toString(),
               lastPrice: holding.institution_price.toString(),
               priceAsOf: new Date(holding.institution_price_as_of),
+            });
+            console.log('Stored holding:', {
+              id: storedHolding.id,
+              accountId: storedHolding.accountId,
+              securityId: storedHolding.securityId,
+              value: storedHolding.value
             });
             storedHoldingsCount++;
           } catch (error) {

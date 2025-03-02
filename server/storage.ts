@@ -153,9 +153,17 @@ export class MemStorage implements IStorage {
 
   async getHoldingsByUserId(userId: number): Promise<InvestmentHolding[]> {
     const userAccounts = await this.getAccountsByUserId(userId);
-    return Array.from(this.holdings.values()).filter(
+    const holdings = Array.from(this.holdings.values()).filter(
       holding => userAccounts.some(account => account.id === holding.accountId)
     );
+    console.log('Holdings retrieval debug:', {
+      userId,
+      userAccountsCount: userAccounts.length,
+      userAccountIds: userAccounts.map(a => a.id),
+      totalHoldings: this.holdings.size,
+      matchedHoldings: holdings.length
+    });
+    return holdings;
   }
 }
 
